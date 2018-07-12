@@ -1,0 +1,34 @@
+sudo: required
+
+# Travis doesn't provide a wide variety of host environments to run on, so we
+# rely on Docker to provide these instead.
+services:
+  - docker
+
+# It is not really needed, other than for showing correct language tag in
+# Travis CI build log.
+language: cpp
+
+# The matrix of targets that we're interested in.
+env:
+  - HOST="ubuntu:16.04" CXXFLAGS="-O2"
+
+# Before running the install phase we need to set up docker container that runs
+# the target machine.
+before_install:
+  - docker run -d --name host -v $(pwd):/travis $HOST tail -f /dev/null
+  - docker ps
+
+# This is another pre-install phase where we update the container that was just
+# set up.  I don't know why these are split, I just copied some tutorial and
+# that's how they did it.
+install:
+  - docker exec -t host bash -c "yes | apt-get update"
+  - docker exec -t host bash -c "yes | apt-get upgrade"
+  - docker exec -t host bash -c "yes | apt-get install automake build-essential wget"
+
+# Here's where we actually run the test.
+script:
+  - docker exec -t dist bash -c "cd /travis/scripts/ && ./launch elf hello machine e31"
+  - docker exec -t dist bash -c "cd /travis/scripts/ && ./launch elf hello machine e31 fidelity  - docker exec -t dist bash -c "cd /travis/scripts/ && ./launch elf hello machine e31 fidelity functional qemu"
+  - docker exec -t dist bash -c "cd /travis/scripts/ && ./launch elf hello machine e31 fidelity openocd fpga arty
