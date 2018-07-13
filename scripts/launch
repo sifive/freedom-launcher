@@ -1,0 +1,82 @@
+#!/bin/bash
+
+set -e
+set -o pipefail
+
+elfs=()
+machines=()
+unset fidelity
+unset functional
+unset openocd
+unset fpga
+while [[ "$1" != "" ]]
+do
+    case "$1" in
+    elf)           elfs+=("$2");            shift 2;;
+    machine)       machines+=("$2");        shift 2;;
+    fidelity)      fidelity="$2";           shift 1;;
+    functional)    functional=("$2");       shift 2;;
+    openocd)       openocd=("$2"); fpga=("$3"); shift 3;;
+    *) echo "$0: unknown argument $1" >&2;     exit 1;;
+    esac
+done
+
+
+if [[ "$elfs" == "" ]]
+then
+    echo "$0: elf programe is a required argument" >&2
+    exit 1
+fi
+
+if [[ "$machines" == "" ]]
+then
+    echo "$0: machine is a required argument" >&2
+    exit 1
+fi
+
+if [[ "$functional" != "" && "$functional" != "qemu" ]]
+then
+    echo "$0: functional $functional is not supported" >&2
+    echo "$0: currently support only functional qemu" >&2
+    exit 1
+fi
+
+if [[ "$openocd" != "" &&  "$openocd" != "fpga" &&  "$fpga" != "arty" ]]
+then
+    echo "$0: openocd $openocd $fpga is not supported" >&2
+    echo "$0: currently support only openocd fpga arty" >&2
+    exit 1
+fi
+
+function launch_default_fidelity () {
+    echo "$0: Running $1 machine $2 on QEMU and Arty using openocd" >&2
+}
+
+function launch_fidelity_qemu () {
+    echo "$0: Running $1 machine $2 on QEMU" >&2
+}
+
+function launch_fidelity_openocd () {
+    echo "$0: Running $1 machine $2 on Arty using openocd" >&2
+}
+
+#if [[ "$fidelity" != "" ]]
+#then
+    if [[ "$functional" != "" ]]
+    then
+	echo "$0: elf [ $elfs ] machine [ $machines ] fidelity $fidelity $functional" >&2
+	launch_fidelity_qemu $elfs $machines
+	exit 0
+    fi
+    if [[ "$openocd" != "" ]]
+    then
+	echo "$0: elf [ $elfs ] machine [ $machines ] fidelity $fidelity $openocd $fpga" >&2
+	launch_fidelity_openocd $elfs $machines
+	exit 0
+    fi
+#else
+    echo "$0: elf [ $elfs ] machine [ $machines ] fidelity" >&2
+    launch_default_fidelity $elfs $machines
+#fi
+
+exit 0
