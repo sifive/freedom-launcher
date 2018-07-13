@@ -30,5 +30,6 @@ install:
 # Here's where we actually run the test.
 script:
   - docker exec -t dist bash -c "cd /travis/scripts/ && ./launch elf hello machine e31"
-  - docker exec -t dist bash -c "cd /travis/scripts/ && ./launch elf hello machine e31 fidelity  - docker exec -t dist bash -c "cd /travis/scripts/ && ./launch elf hello machine e31 fidelity functional qemu"
-  - docker exec -t dist bash -c "cd /travis/scripts/ && ./launch elf hello machine e31 fidelity openocd fpga arty
+  - docker exec -t dist bash -c "cd /travis/scripts/ && ./launch elf hello machine e31 fidelity"
+  - docker exec -t dist bash -c "cd /travis/scripts/ && ./launch elf hello machine e31 fidelity functional qemu"
+  - docker exec -t dist bash -c "cd /travis/scripts/ && ./launch elf hello machine e31 fidelity openocd fpga arty"
