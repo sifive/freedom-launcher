@@ -1,0 +1,103 @@
+#!/bin/bash
+
+set -e
+set -o pipefail
+
+help() {
+    cat >&2 <<EOF
+$0: Freedom launcher for the SiFive Freedom SDK machine
+    --help                            Prints this help text.
+    --elf=ELF                         Specify location of elf program to use.
+    --machine=MACHINE                 Specify the machine target to use.
+    --fidelity=FIDELITY               Specify the fidelity type to run.
+    --functional=QEMU                 Specify the functional type, like qemu.
+    --cycle-accurate=FPGA_TYPE        Specify the cycle-accurate type, like arty fpga.
+EOF
+}
+
+unset ELF
+unset MACHINE
+FIDELITY="all"
+FUNCTIONAL="qemu"
+CYCLE_ACCURATE="arty"
+# Command-line argument handling
+while [[ "$1" != "" ]]
+do
+    case "$1" in
+    --help)             help "$0";               exit 0;;
+    --elf=*)            ELF="$(echo "$1" | cut -d= -f2-)"; shift 1;;
+    --elf)              ELF="$2";                shift 2;;
+    --machine=*)        MACHINE="$(echo "$1" | cut -d= -f2-)"; shift 1;;
+    --machine)          MACHINE="$2";            shift 2;;
+    --fidelity=*)       FIDELITY="$(echo "$1" | cut -d= -f2-)"; shift 1;;
+    --fidelity)         FIDELITY="$2";           shift 2;;
+    --functional=*)     FUNCTIONAL="$(echo "$1" | cut -d= -f2-)"; shift 1;;
+    --functional)       FUNCTIONAL="$2";         shift 2;;
+    --cycle-accurate=*) CYCLE_ACCURATE="$(echo "$1" | cut -d= -f2-)"; shift 1;;
+    --cycle-accurate)   CYCLE_ACCURATE="$2";     shift 2;;
+    *) echo "$0: unknown argument $1" >&2;       exit 1;;
+    esac
+done
+
+
+if [[ "$ELF" == "" ]]
+then
+    echo "$0: elf programe is a required argument" >&2
+    exit 1
+fi
+
+if [[ "$MACHINE" == "" ]]
+then
+    echo "$0: machine is a required argument" >&2
+    exit 1
+fi
+
+if [[ "$FIDELITY" == "functional" && "$FUNCTIONAL" != "qemu" ]]
+then
+    echo "$0: functional $FUNCTIONAL is not supported" >&2
+    echo "$0: currently support only functional qemu" >&2
+    exit 1
+fi
+
+if [[ "$FIDELITY" == "cycle-accurate" && "$CYCLE_ACCURATE" != "arty" ]]
+then
+    echo "$0: cycle-accurate $CYCLE_ACCURATE is not supported" >&2
+    echo "$0: currently support only cycle-accurate fpga arty" >&2
+    exit 1
+fi
+
+function launch_fidelity_qemu () {
+    #TODO: Check if MACHINE is supported
+    export elf_file=$1; launch_qemu-"$2"; unset elf_file
+}
+
+function launch_fidelity_openocd () {
+    #TODO: Check if device is attached 
+    export elf_file=$1; launch_openocd-"$2"; unset elf_file
+}
+
+function launch_default_fidelity () {
+    launch_fidelity_qemu $1 $2
+    launch_fidelity_openocd $1 $2
+}
+
+if [[ "$FIDELITY" == "all" ]]
+then
+    launch_default_fidelity $ELF $MACHINE
+    exit 0
+fi
+
+if [[ "$FUNCTIONAL" == "qemu" ]]
+then
+    launch_fidelity_qemu $ELF $MACHINE
+    exit 0
+fi
+
+if [[ "$CYCLE_ACCURATE" == "arty" ]]
+then
+    launch_fidelity_openocd $ELF $MACHINE
+    exit 0
+fi
+
+help
+exit 0
