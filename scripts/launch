@@ -2,6 +2,9 @@
 
 set -e
 set -o pipefail
+tempdir="$(mktemp -d)"
+trap "rm -rf $tempdir" EXIT
+cd "$tempdir"
 
 help() {
     cat >&2 <<EOF
@@ -11,15 +14,15 @@ $0: Freedom launcher for the SiFive Freedom SDK machine
     --machine=MACHINE                 Specify the machine target to use.
     --fidelity=FIDELITY               Specify the fidelity type to run.
     --functional=QEMU                 Specify the functional type, like qemu.
-    --cycle-accurate=FPGA_TYPE        Specify the cycle-accurate type, like arty fpga.
+    --cycle-accurate=CA_TYPE          Specify the cycle-accurate type, [ arty | vcs ].
 EOF
 }
 
 unset ELF
 unset MACHINE
 FIDELITY="all"
-FUNCTIONAL="qemu"
-CYCLE_ACCURATE="arty"
+unset FUNCTIONAL
+unset CYCLE_ACCURATE
 # Command-line argument handling
 while [[ "$1" != "" ]]
 do
@@ -40,45 +43,79 @@ do
 done
 
 
-if [[ "$ELF" == "" ]]
+if [[ "$ELF" == "" || ! -e "$ELF" ]]
 then
-    echo "$0: elf programe is a required argument" >&2
+    echo "$0: --elf is a required argument and must exist" >&2
     exit 1
 fi
+
+ELF_NAME="$(basename "$ELF" | cut -d. -f1)"
+ln -s "$ELF" "program.elf"
 
 if [[ "$MACHINE" == "" ]]
 then
-    echo "$0: machine is a required argument" >&2
+    echo "$0: --machine is a required argument" >&2
     exit 1
 fi
 
-if [[ "$FIDELITY" == "functional" && "$FUNCTIONAL" != "qemu" ]]
+if [[ "$FIDELITY" != "" && \
+      "$FIDELITY" != "all" && \
+      "$FIDELITY" != "functional" && \
+      "$FIDELITY" != "cycle-accurate" ]]
 then
-    echo "$0: functional $FUNCTIONAL is not supported" >&2
-    echo "$0: currently support only functional qemu" >&2
+    echo "$0: Unsupport fidelity type $FIDELITY" >&2
+    help "$0"
     exit 1
 fi
 
-if [[ "$FIDELITY" == "cycle-accurate" && "$CYCLE_ACCURATE" != "arty" ]]
+if [[ "$FIDELITY" == "functional" ]]
 then
-    echo "$0: cycle-accurate $CYCLE_ACCURATE is not supported" >&2
-    echo "$0: currently support only cycle-accurate fpga arty" >&2
-    exit 1
+    if [[ "$FUNCTIONAL" != "" && "$FUNCTIONAL" != "qemu" ]]
+    then
+        echo "$0: functional $FUNCTIONAL is not a support type" >&2
+        echo "$0: Current support type is qemu" >&2
+        exit 1
+    fi
+fi
+
+if [[ "$FIDELITY" == "cycle-accurate" ]]
+then
+    if [[ "$CYCLE_ACCURATE" != "" && \
+          "$CYCLE_ACCURATE" != "arty" && "$CYCLE_ACCURATE" != "vcs" ]]
+    then
+	echo "$0: cycle-accurate $CYCLE_ACCURATE is not a support type" >&2
+	echo "$0: Current support types are [ arty | vcs ]" >&2
+	exit 1
+    fi
 fi
 
 function launch_fidelity_qemu () {
-    #TODO: Check if MACHINE is supported
-    export elf_file=$1; launch_qemu-"$2"; unset elf_file
+    if [[ "$2" == "sifive-hifive1" ]]
+    then
+        launch_qemu-"$2"
+    else
+	echo "$0: Qemu only support hifive1!" >&1
+    fi
 }
 
 function launch_fidelity_openocd () {
-    #TODO: Check if device is attached 
-    export elf_file=$1; launch_openocd-"$2"; unset elf_file
+    lsusb | grep "Olimex Ltd. ARM-USB-TINY-H JTAG interface" > ".lsusb-$2" || true
+    if [[ -s ".lsusb-$2" ]]
+    then
+        launch_openocd-"$2"
+    else
+        echo "$0: No arty present!" >&1
+    fi
+}
+
+function launch_fidelity_simv () {
+    launch_simv-"$2"
 }
 
 function launch_default_fidelity () {
     launch_fidelity_qemu $1 $2
     launch_fidelity_openocd $1 $2
+    launch_fidelity_simv $1 $2
 }
 
 if [[ "$FIDELITY" == "all" ]]
@@ -96,6 +133,12 @@ fi
 if [[ "$CYCLE_ACCURATE" == "arty" ]]
 then
     launch_fidelity_openocd $ELF $MACHINE
+    exit 0
+fi
+
+if [[ "$CYCLE_ACCURATE" == "vcs" ]]
+then
+    launch_fidelity_simv $ELF $MACHINE
     exit 0
 fi
 

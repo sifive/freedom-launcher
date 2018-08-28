@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -e
+set -o pipefail
+
+if [[ "VERILOG" != "" ]]
+then
+    if [[ -e "VERILOG" ]]
+    then
+	ln -s "VERILOG" "MACHINE"
+	mkdir -p "MACHINE/tests/new"
+	BIT_WIDTH=$(awk '{if ($2 == "testharness_ext") print $6}' "MACHINE/info/design.conf")
+	ELF2HEX --input "program.elf" --bit-width ${BIT_WIDTH} --output "MACHINE/tests/new/program.hex"
+	cd "MACHINE"
+	make -f Makefile.vcs all
+	cd -
+	rm -rf "MACHINE/tests/new"	    
+    else
+	echo "$0: No verilog install for MACHINE!" >&2
+    fi
+else
+    echo "$0: Verilog was not installed!" >&2
+fi
+
+
