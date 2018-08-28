@@ -29,6 +29,17 @@ AS_IF([test "x$with_machine_dts" != "xno"],
     [AC_MSG_FAILURE([--with-machine-dts is required])]
 )
 
+AC_ARG_WITH([machine-verilog],
+    [AS_HELP_STRING([--with-machine-verilog=PATH], [The full path to the verilog Makefile directory])],
+    [],
+    [with_machine_verilog="no"]
+)
+
+AS_IF([test "x$with_machine_verilog" != "xno"],
+    [AC_SUBST([MACHINE_VERILOG], "$with_machine_verilog")],
+    []
+)
+
 # Allows users to specify a path to DTC
 AC_ARG_WITH([dtc],
     [AS_HELP_STRING([--with-dtc=PATH], [Use the given path to the device tree compiler])],
@@ -96,29 +107,29 @@ AS_IF([test "x$with_openocd" == "xcheck"],
     [AC_PATH_PROG(OPENOCD, openocd, [no])],
     [DTC="$with_openocd"]
 )
-AS_IF([test "x$OPENOCD" != "xopenocd"],
+AS_IF([test "x$OPENOCD" != "xno"],
     [AC_SUBST([OPENOCD], "$OPENOCD")],
     [AC_MSG_ERROR([Unable to find openocd, either place it in PATH or try the --with-openocd argument.])]
 )
 
 # Allows users to specify a path to gdb
 AC_ARG_WITH([gdb],
-    [AS_HELP_STRING([--with-gdb=PATH], [Use the given path to the riscv64-sifive-mee-gdb])],
+    [AS_HELP_STRING([--with-gdb=PATH], [Use the given path to the riscv64-sifive-elf-gdb])],
     [],
     [with_gdb=check]
 )
 
-AC_ARG_VAR(GDB, [The absolute path to riscv64-sifive-mee-gdb])
+AC_ARG_VAR(GDB, [The absolute path to riscv64-sifive-elf-gdb])
 AS_IF([test "x$with_gdb" == "xcheck"],
-    [AC_PATH_PROG(GDB, riscv64-sifive-mee-gdb, [no])],
+    [AC_PATH_PROG(GDB, riscv64-sifive-elf-gdb, [no])],
     [DTC="$with_gdb"]
 )
 AS_IF([test "x$GDB" != "xno"],
     [AC_SUBST([GDB], "$GDB")],
-    [AC_MSG_ERROR([Unable to find riscv64-sifive-mee-gdb, either place it in PATH or try the --with-gdb argument.])]
+    [AC_MSG_ERROR([Unable to find riscv64-sifive-elf-gdb, either place it in PATH or try the --with-gdb argument.])]
 )
 
-# Allows users to specify a path to Qemu
+# Allows users to specify a path to Qemu32
 AC_ARG_WITH([qemu32],
     [AS_HELP_STRING([--with-qemu32=PATH], [Use the given path to qemu-system-riscv32])],
     [],
@@ -136,7 +147,7 @@ AS_IF([test "x$QEMU32" != "xno"],
 )
 
 
-# Allows users to specify a path to Qemu
+# Allows users to specify a path to Qemu64
 AC_ARG_WITH([qemu64],
     [AS_HELP_STRING([--with-qemu64=PATH], [Use the given path to qemu-system-riscv64])],
     [],
@@ -151,6 +162,23 @@ AS_IF([test "x$with_qemu64" == "xcheck"],
 AS_IF([test "x$QEMU64" != "xno"],
     [AC_SUBST([QEMU64], "$QEMU64")],
     [AC_MSG_ERROR([Unable to find qemu-system-riscv64, either place it in PATH or try the --with-qemu64 argument.])]
+)
+
+# Allows users to specify a path to elf2hex
+AC_ARG_WITH([elf2hex],
+    [AS_HELP_STRING([--with-elf2hex=PATH], [Use the given path to riscv64-sifive-elf-elf2hex])],
+    [],
+    [with_elf2hex=check]
+)
+
+AC_ARG_VAR(ELF2HEX, [The absolute path to riscv64-sifive-elf-elf2hex])
+AS_IF([test "x$with_elf2hex" == "xcheck"],
+    [AC_PATH_PROG(ELF2HEX, riscv64-sifive-elf-elf2hex, [no])],
+    [ELF2HEX="$with_elf2hex"]
+)
+AS_IF([test "x$ELF2HEX" != "xno"],
+    [AC_SUBST([ELF2HEX], "$ELF2HEX")],
+    [AC_MSG_ERROR([Unable to find riscv64-sifive-elf-elf2hex, either place it in PATH or try the --with-elf2hex argument.])]
 )
 
 
