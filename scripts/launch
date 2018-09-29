@@ -11,6 +11,7 @@ help() {
 $0: Freedom launcher for the SiFive Freedom SDK machine
     --help                            Prints this help text.
     --elf=ELF                         Specify location of elf program to use.
+    --bips=BIPS                       Specify number of billion instruction per second.
     --machine=MACHINE                 Specify the machine target to use.
     --fidelity=FIDELITY               Specify the fidelity type to run.
     --functional=QEMU                 Specify the functional type, like qemu.
@@ -19,6 +20,7 @@ EOF
 }
 
 unset ELF
+unset BIPS
 unset MACHINE
 FIDELITY="all"
 unset FUNCTIONAL
@@ -30,6 +32,8 @@ do
     --help)             help "$0";               exit 0;;
     --elf=*)            ELF="$(echo "$1" | cut -d= -f2-)"; shift 1;;
     --elf)              ELF="$2";                shift 2;;
+    --bips=*)           BIPS="$(echo "$1" | cut -d= -f2-)"; shift 1;;
+    --bips)             BIPS="$2";                shift 2;;
     --machine=*)        MACHINE="$(echo "$1" | cut -d= -f2-)"; shift 1;;
     --machine)          MACHINE="$2";            shift 2;;
     --fidelity=*)       FIDELITY="$(echo "$1" | cut -d= -f2-)"; shift 1;;
@@ -47,6 +51,11 @@ if [[ "$ELF" == "" || ! -e "$ELF" ]]
 then
     echo "$0: --elf is a required argument and must exist" >&2
     exit 1
+fi
+
+if [[ "$BIPS" == "" ]]
+then
+    echo "$0: --bips not given, default to 1 BIPS" >&2
 fi
 
 ELF_NAME="$(basename "$ELF" | cut -d. -f1)"
@@ -92,7 +101,22 @@ fi
 function launch_fidelity_qemu () {
     if [[ "$2" == "sifive-hifive1" ]]
     then
-        launch_qemu-"$2"
+	QEMU_TO=$((BIPS + 1))
+	(
+            launch_qemu-"$2" > "qemu.output"
+	)&
+        pollloop=1
+        while [[ ${pollloop} -le ${QEMU_TO} ]]
+        do
+            sleep 1
+            (( pollloop++ ))
+        done
+        if [[ -s "qemu.output" ]]
+        then
+	    cat "qemu.output" >&1
+        else
+	    echo "$0: Qemu launch was TIMEOUT after ${QEMU_TO}s" >&1
+	fi
     else
 	echo "$0: Qemu only support hifive1!" >&1
     fi
